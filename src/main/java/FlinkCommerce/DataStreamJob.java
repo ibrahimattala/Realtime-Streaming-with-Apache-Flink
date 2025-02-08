@@ -33,19 +33,60 @@
      private static final String password = "postgres";
  
      public static void main(String[] args) throws Exception {
-         // Sets up the execution environment, which is the main entry point
-         // to building Flink applications.
-         final StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
+             // Sets up the execution environment, which is the main entry point
+             // to building Flink applications.
+             final StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
  
-         String topic = "financial_transactions";
+            String topic = "financial_transactions";
  
-         KafkaSource<Transaction> source = KafkaSource.<Transaction>builder()
+             KafkaSource<Transaction> source = KafkaSource.<Transaction>builder()
                  .setBootstrapServers("localhost:9092")
                  .setTopics(topic)
                  .setGroupId("flink-group")
                  .setStartingOffsets(OffsetsInitializer.earliest())
                  .setValueOnlyDeserializer(new JSONValueDeserializationSchema())
                  .build();
+
+            DataStream<Transaction> transactionStream = env.fromSource(source, WatermarkStrategy.noWatermarks(), "Kafka source");
+
+            transactionStream.print();
+
+            JdbcExecutionOptions execOptions = new JdbcExecutionOptions.Builder()
+                .withBatchSize(1000)
+                .withBatchIntervalMs(200)
+                .withMaxRetries(5)
+                .build();
+
+            JdbcConnectionOptions connOptions = new JdbcConnectionOptions.JdbcConnectionOptionsBuilder()
+                .withUrl(jdbcUrl)
+                .withDriverName("org.postgresql.Driver")
+                .withUsername(username)
+                .withPassword(password)
+                .build();
+ 
+                //create transactions table
+            transactionStream.addSink(JdbcSink.sink(
+                    "CREATE TABLE IF NOT EXISTS transactions (" +
+                            "transaction_id VARCHAR(255) PRIMARY KEY, " +
+                            "product_id VARCHAR(255), " +
+                            "product_name VARCHAR(255), " +
+                            "product_category VARCHAR(255), " +
+                            "product_price DOUBLE PRECISION, " +
+                            "product_quantity INTEGER, " +
+                            "product_brand VARCHAR(255), " +
+                            "total_amount DOUBLE PRECISION, " +
+                            "currency VARCHAR(255), " +
+                            "customer_id VARCHAR(255), " +
+                            "transaction_date TIMESTAMP, " +
+                            "payment_method VARCHAR(255) " +
+                            ")",
+                    (JdbcStatementBuilder<Transaction>) (preparedStatement, transaction) -> {
+    
+                    },
+                    execOptions,
+                    connOptions
+                )).name("Create Transactions Table Sink");
+         
  
  
          // Execute program, beginning computation.
