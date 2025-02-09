@@ -86,6 +86,43 @@
                     execOptions,
                     connOptions
                 )).name("Create Transactions Table Sink");
+
+            
+            
+            transactionStream.addSink(JdbcSink.sink(
+                    "INSERT INTO transactions(transaction_id, product_id, product_name, product_category, product_price, " +
+                            "product_quantity, product_brand, total_amount, currency, customer_id, transaction_date, payment_method) " +
+                            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) " +
+                            "ON CONFLICT (transaction_id) DO UPDATE SET " +
+                            "product_id = EXCLUDED.product_id, " +
+                            "product_name  = EXCLUDED.product_name, " +
+                            "product_category  = EXCLUDED.product_category, " +
+                            "product_price = EXCLUDED.product_price, " +
+                            "product_quantity = EXCLUDED.product_quantity, " +
+                            "product_brand = EXCLUDED.product_brand, " +
+                            "total_amount  = EXCLUDED.total_amount, " +
+                            "currency = EXCLUDED.currency, " +
+                            "customer_id  = EXCLUDED.customer_id, " +
+                            "transaction_date = EXCLUDED.transaction_date, " +
+                            "payment_method = EXCLUDED.payment_method " +
+                            "WHERE transactions.transaction_id = EXCLUDED.transaction_id",
+                    (JdbcStatementBuilder<Transaction>) (preparedStatement, transaction) -> {
+                        preparedStatement.setString(1, transaction.getTransactionId());
+                        preparedStatement.setString(2, transaction.getProductId());
+                        preparedStatement.setString(3, transaction.getProductName());
+                        preparedStatement.setString(4, transaction.getProductCategory());
+                        preparedStatement.setDouble(5, transaction.getProductPrice());
+                        preparedStatement.setInt(6, transaction.getProductQuantity());
+                        preparedStatement.setString(7, transaction.getProductBrand());
+                        preparedStatement.setDouble(8, transaction.getTotalAmount());
+                        preparedStatement.setString(9, transaction.getCurrency());
+                        preparedStatement.setString(10, transaction.getCustomerId());
+                        preparedStatement.setTimestamp(11, transaction.getTransactionDate());
+                        preparedStatement.setString(12, transaction.getPaymentMethod());
+                    },
+                         execOptions,
+                         connOptions
+                      )).name("Insert into transactions table sink");
          
  
  
